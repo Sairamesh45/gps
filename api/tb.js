@@ -10,23 +10,41 @@ let cached = { token: null, expiry: 0 };
 async function login() {
   if (cached.token && Date.now() < cached.expiry - 60000) return cached.token;
   if (!TB_USER || !TB_PASS) throw new Error('Server misconfigured: TB_USER/TB_PASS not set');
-  const r = await fetch(`${TB_HOST}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: TB_USER, password: TB_PASS })
-  });
-  if (!r.ok) throw new Error('Auth failed: ' + r.status);
-  const d = await r.json();
-  cached.token = d.token;
-  cached.expiry = Date.now() + 3600 * 1000;
-  return cached.token;
+  
+  try {
+    const r = await fetch(`${TB_HOST}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: TB_USER, password: TB_PASS })
+    });
+    if (!r.ok) {
+      const errText = await r.text().catch(() => '');
+      throw new Error(`ThingsBoard auth failed (${r.status}): ${errText || 'Check credentials'}`);
+    }
+    const d = await r.json();
+    cached.token = d.token;
+    cached.expiry = Date.now() + 3600 * 1000;
+    return cached.token;
+  } catch (err) {
+    throw new Error(`Login error: ${err.message}`);
+  }
 }
 
 export default async function handler(req, res) {
+  // Enable CORS for testing
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  
   const { action, deviceId } = req.body || {};
   try {
     if (!action) return res.status(400).json({ error: 'Missing action' });
+    if (!TB_USER || !TB_PASS) {
+      return res.status(500).json({ error: 'Server misconfigured: TB_USER or TB_PASS not set in environment variables' });
+    }
 
     const token = await login();
 
