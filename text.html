@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MyPerro — Live Tracker</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   MyPerro Dashboard — Premium Light Theme
+   Palette aligned with myperro.in brand
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  /* Brand */
+  --brand: #D4540E;
+  --brand-hover: #BF4B0A;
+  --brand-light: rgba(212, 84, 14, 0.08);
+  --brand-lighter: rgba(212, 84, 14, 0.04);
+  --brand-ring: rgba(212, 84, 14, 0.25);
+
+  /* Surfaces */
+  --bg: #F7F8FA;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-inset: #F3F4F6;
+
+  /* Borders */
+  --border: #E5E7EB;
+  --border-light: #F0F1F3;
+  --border-focus: #D4540E;
+
+  /* Text */
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --text-inverse: #FFFFFF;
+
+  /* Semantic */
+  --success: #059669;
+  --success-light: rgba(5, 150, 105, 0.08);
+  --warning: #D97706;
+  --warning-light: rgba(217, 119, 6, 0.08);
+  --danger: #DC2626;
+  --danger-light: rgba(220, 38, 38, 0.06);
+
+  /* Collar palette (softer, harmonized) */
+  --collar1: #D4540E;
+  --collar1-light: rgba(212, 84, 14, 0.10);
+  --collar2: #7C3AED;
+  --collar2-light: rgba(124, 58, 237, 0.10);
+  --collar3: #059669;
+  --collar3-light: rgba(5, 150, 105, 0.10);
+
+  /* Elevation */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Spacing (8px system) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* Transitions */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+::selection { background: var(--brand); color: #fff; }
+button { font-family: inherit; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════════ */
+.app {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-8);
+}
+
+/* ── Header ── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--sp-6);
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: var(--sp-6);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--brand);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 2px 8px rgba(212, 84, 14, 0.25);
+}
+.logo-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.4px;
+}
+.logo-text span {
+  color: var(--brand);
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+/* Status */
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.2s var(--ease);
+}
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: all 0.3s var(--ease);
+  flex-shrink: 0;
+}
+.status-dot.live {
+  background: var(--success);
+  box-shadow: 0 0 0 3px var(--success-light);
+  animation: livePulse 2s ease-in-out infinite;
+}
+.status-dot.error {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-light);
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Settings dropdown */
+.settings-wrapper {
+  position: relative;
+}
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+}
+.btn-icon:hover {
+  background: var(--surface-inset);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+.btn-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.settings-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  min-width: 200px;
+  padding: var(--sp-1);
+  z-index: 100;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+  pointer-events: none;
+  transition: all 0.15s var(--ease);
+}
+.settings-menu.open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: all;
+}
+.settings-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.1s var(--ease);
+  text-align: left;
+}
+.settings-menu-item:hover {
+  background: var(--surface-inset);
+  color: var(--text-primary);
+}
+.settings-menu-item.danger {
+  color: var(--danger);
+}
+.settings-menu-item.danger:hover {
+  background: var(--danger-light);
+}
+.settings-menu-item svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.settings-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: var(--sp-1) 0;
+}
+
+/* ── Collar Selector (inline pills) ── */
+.collar-selector {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.collar-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+  white-space: nowrap;
+}
+.collar-tab:hover {
+  background: var(--surface-inset);
+  color: var(--text-primary);
+}
+.collar-tab.active {
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-xs);
+}
+.collar-tab[data-index="0"].active {
+  background: var(--collar1-light);
+  border-color: rgba(212, 84, 14, 0.25);
+  color: var(--collar1);
+}
+.collar-tab[data-index="1"].active {
+  background: var(--collar2-light);
+  border-color: rgba(124, 58, 237, 0.25);
+  color: var(--collar2);
+}
+.collar-tab[data-index="2"].active {
+  background: var(--collar3-light);
+  border-color: rgba(5, 150, 105, 0.25);
+  color: var(--collar3);
+}
+.collar-tab[data-index="all"].active {
+  background: var(--brand-light);
+  border-color: rgba(212, 84, 14, 0.2);
+  color: var(--brand);
+}
+.collar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Stats Row ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: var(--sp-5);
+  transition: all 0.2s var(--ease);
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  border-radius: var(--radius) var(--radius) 0 0;
+  transition: background 0.2s var(--ease);
+}
+.stat-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border);
+  transform: translateY(-1px);
+}
+.stat-card:hover::before {
+  background: var(--brand);
+}
+.stat-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-3);
+}
+.stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.stat-icon.brand { background: var(--brand-light); color: var(--brand); }
+.stat-icon.success { background: var(--success-light); color: var(--success); }
+.stat-icon.purple { background: var(--collar2-light); color: var(--collar2); }
+.stat-icon.warning { background: var(--warning-light); color: var(--warning); }
+.stat-icon svg { width: 16px; height: 16px; }
+.stat-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+.stat-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* ── Map ── */
+.map-section {
+  position: relative;
+  margin-bottom: var(--sp-4);
+}
+.map-wrapper {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  height: 70vh;
+  min-height: 480px;
+  max-height: 720px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+#map {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Map overlay - collar info (top-left glassmorphism card) */
+.map-overlay {
+  position: absolute;
+  top: var(--sp-4);
+  left: var(--sp-4);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.overlay-pill {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.overlay-pill .val {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Floating map controls (top-right) */
+.map-controls {
+  position: absolute;
+  top: var(--sp-4);
+  right: var(--sp-4);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius);
+  padding: var(--sp-1);
+  box-shadow: var(--shadow-md);
+}
+.map-ctrl-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+  white-space: nowrap;
+}
+.map-ctrl-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+.map-ctrl-btn.active {
+  background: var(--brand-light);
+  color: var(--brand);
+}
+.map-ctrl-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Map Legend (bottom-left) */
+.map-legend {
+  position: absolute;
+  bottom: var(--sp-4);
+  left: var(--sp-4);
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius);
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  box-shadow: var(--shadow-md);
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Action Bar ── */
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.action-bar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.action-bar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+  border: none;
+  white-space: nowrap;
+  line-height: 1;
+}
+.btn-primary {
+  background: var(--brand);
+  color: var(--text-inverse);
+  padding: 10px 20px;
+  box-shadow: 0 1px 3px rgba(212, 84, 14, 0.3);
+}
+.btn-primary:hover {
+  background: var(--brand-hover);
+  box-shadow: 0 4px 12px rgba(212, 84, 14, 0.3);
+  transform: translateY(-1px);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 10px 16px;
+}
+.btn-secondary:hover {
+  background: var(--surface-inset);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+.btn-icon-only {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+.btn svg {
+  width: 15px;
+  height: 15px;
+}
+.refresh-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.refresh-label .dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: var(--sp-8);
+  right: var(--sp-8);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-4) var(--sp-5);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.3s var(--ease-spring);
+  z-index: 9999;
+  max-width: 380px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+.toast.success {
+  border-left: 3px solid var(--success);
+}
+.toast.error {
+  border-left: 3px solid var(--danger);
+}
+.toast.warn {
+  border-left: 3px solid var(--warning);
+}
+
+/* ── Confirm Modal ── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.modal-backdrop.show {
+  display: flex;
+}
+.modal-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-8);
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: var(--shadow-xl);
+}
+.modal-box h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--sp-2);
+}
+.modal-box p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-6);
+  line-height: 1.6;
+}
+.modal-btns {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-3);
+}
+.modal-btns .btn-cancel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+}
+.modal-btns .btn-cancel:hover {
+  background: var(--surface-inset);
+  color: var(--text-primary);
+}
+.modal-btns .btn-danger {
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+}
+.modal-btns .btn-danger:hover {
+  background: #B91C1C;
+}
+
+/* ── Loading ── */
+.loading-map {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  z-index: 500;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.loading-map .spinner {
+  width: 28px;
+  height: 28px;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-map .load-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ── Leaflet clean theme ── */
+.leaflet-control-zoom {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm) !important;
+}
+.leaflet-control-zoom a {
+  background: var(--surface) !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border) !important;
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  font-size: 14px !important;
+}
+.leaflet-control-zoom a:hover {
+  background: var(--surface-inset) !important;
+  color: var(--text-primary) !important;
+}
+.leaflet-control-attribution { display: none !important; }
+
+/* Per-collar pulse markers */
+.pulse-marker {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  animation: markerPulse 2s infinite ease-in-out;
+}
+.pulse-marker.c0 {
+  background: var(--collar1);
+  border: 3px solid rgba(212, 84, 14, 0.25);
+  box-shadow: 0 0 0 4px rgba(212, 84, 14, 0.12), 0 2px 8px rgba(212, 84, 14, 0.3);
+}
+.pulse-marker.c1 {
+  background: var(--collar2);
+  border: 3px solid rgba(124, 58, 237, 0.25);
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12), 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+.pulse-marker.c2 {
+  background: var(--collar3);
+  border: 3px solid rgba(5, 150, 105, 0.25);
+  box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.12), 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+@keyframes markerPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.8; }
+}
+
+/* leaflet popup overrides */
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-lg) !important;
+  padding: 0 !important;
+  border: 1px solid var(--border-light) !important;
+}
+.leaflet-popup-content {
+  margin: var(--sp-3) var(--sp-4) !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 12px !important;
+  color: var(--text-secondary) !important;
+  line-height: 1.5 !important;
+}
+.leaflet-popup-content b {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+}
+.leaflet-popup-tip {
+  box-shadow: none !important;
+  border: 1px solid var(--border-light) !important;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .app { padding: var(--sp-4); }
+  header { flex-wrap: wrap; gap: var(--sp-3); }
+  .header-center { order: 3; width: 100%; overflow-x: auto; padding-bottom: var(--sp-2); }
+  .collar-selector { gap: 4px; }
+  .collar-tab { padding: 5px 10px; font-size: 12px; }
+  .stats-row { grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+  .map-wrapper { height: 55vh; min-height: 320px; }
+  .action-bar { flex-direction: column; align-items: stretch; gap: var(--sp-3); }
+  .action-bar-right { justify-content: flex-end; }
+  .map-controls { flex-direction: row; top: auto; bottom: var(--sp-4); right: var(--sp-4); }
+}
+
+@media (max-width: 480px) {
+  .stats-row { grid-template-columns: 1fr; }
+  .logo-text { font-size: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══ Header ═══ -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🐾</div>
+      <div class="logo-text">my<span>perro</span></div>
+    </div>
+
+    <div class="header-center">
+      <div class="collar-selector" id="collarSelector">
+        <!-- collar tabs injected by JS -->
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="status-pill">
+        <span class="status-dot" id="connDot"></span>
+        <span id="connLabel">Connecting...</span>
+      </div>
+
+      <!-- Settings dropdown -->
+      <div class="settings-wrapper" id="settingsWrapper">
+        <button class="btn-icon" id="settingsBtn" onclick="toggleSettings()" aria-label="Settings">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+        </button>
+        <div class="settings-menu" id="settingsMenu">
+          <button class="settings-menu-item" onclick="refreshAllCollars(); closeSettings();">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182"/></svg>
+            Force Refresh
+          </button>
+          <div class="settings-divider"></div>
+          <button class="settings-menu-item danger" onclick="confirmFlush(); closeSettings();">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+            Flush Telemetry...
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ Metric Cards ═══ -->
+  <div class="stats-row">
+
+    <!-- Current Location -->
+    <div class="stat-card">
+      <div class="stat-card-header">
+        <div class="stat-label">Current Location</div>
+        <div class="stat-icon brand">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
+        </div>
+      </div>
+      <div class="stat-value" id="statLocation">—</div>
+      <div class="stat-sub" id="statLocationSub">Waiting for GPS...</div>
+    </div>
+
+    <!-- Last Update -->
+    <div class="stat-card">
+      <div class="stat-card-header">
+        <div class="stat-label">Last Update</div>
+        <div class="stat-icon warning">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        </div>
+      </div>
+      <div class="stat-value" id="statTime">—</div>
+      <div class="stat-sub" id="statTimeSub">—</div>
+    </div>
+
+    <!-- Distance Today -->
+    <div class="stat-card">
+      <div class="stat-card-header">
+        <div class="stat-label">Distance Today</div>
+        <div class="stat-icon purple">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5"/></svg>
+        </div>
+      </div>
+      <div class="stat-value" id="statDistance">—</div>
+      <div class="stat-sub" id="statDistanceSub">No route data</div>
+    </div>
+
+    <!-- Data Points -->
+    <div class="stat-card">
+      <div class="stat-card-header">
+        <div class="stat-label">Data Points</div>
+        <div class="stat-icon success">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+        </div>
+      </div>
+      <div class="stat-value" id="statPoints">0</div>
+      <div class="stat-sub" id="statPointsSub">Total tracked</div>
+    </div>
+
+  </div>
+
+  <!-- ═══ Map ═══ -->
+  <div class="map-section">
+    <div class="map-wrapper">
+      <!-- Loading state -->
+      <div class="loading-map" id="mapLoader">
+        <div class="spinner"></div>
+        <div class="load-text">Fetching coordinates...</div>
+      </div>
+
+      <!-- Collar info overlay (top-left) -->
+      <div class="map-overlay" id="mapOverlay" style="display:none;">
+        <div class="overlay-pill">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="color:var(--brand)"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
+          <span class="val" id="overlayCoord">—</span>
+        </div>
+      </div>
+
+      <!-- Floating controls (top-right) -->
+      <div class="map-controls">
+        <button class="map-ctrl-btn" id="btnFit" onclick="fitBounds()" title="Fit all points">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"/></svg>
+          Fit All
+        </button>
+        <button class="map-ctrl-btn" id="btnLatest" onclick="goLatest()" title="Go to latest position">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0 1 20.25 6v1.5m0 9V18A2.25 2.25 0 0 1 18 20.25h-1.5m-9 0H6A2.25 2.25 0 0 1 3.75 18v-1.5M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+          Latest
+        </button>
+        <button class="map-ctrl-btn active" id="btnTrail" onclick="toggleTrail()" title="Toggle trail">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941"/></svg>
+          Trail
+        </button>
+      </div>
+
+      <!-- Map -->
+      <div id="map"></div>
+
+      <!-- Legend (bottom-left) -->
+      <div class="map-legend" id="mapLegend"></div>
+    </div>
+  </div>
+
+  <!-- ═══ Action Bar ═══ -->
+  <div class="action-bar">
+    <div class="action-bar-left">
+      <span id="refreshLabel">Auto-refresh: 10s</span>
+    </div>
+    <div class="action-bar-right">
+      <!-- Refresh icon button -->
+      <button class="btn btn-secondary btn-icon-only" onclick="refreshAllCollars()" title="Refresh now">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182"/></svg>
+      </button>
+      <!-- Download primary button -->
+      <button class="btn btn-primary" onclick="downloadMapImage()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+        Download Map
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Flush confirmation modal -->
+<div class="modal-backdrop" id="flushModal">
+  <div class="modal-box">
+    <h3>Flush Telemetry Data?</h3>
+    <p id="flushMsg">This will permanently delete all location history for <b id="flushCollarName">—</b> from ThingsBoard. This action cannot be undone.</p>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeFlushModal()">Cancel</button>
+      <button class="btn-danger" id="flushConfirmBtn" onclick="executeFlush()">Yes, delete all</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// ── Config ──
+// ══════════════════════════════════════════════════════════
+const TB_HOST   = "https://thingsboard.cloud";
+const TB_USER   = "junglemungle64@gmail.com";
+const TB_PASS   = "liftkaradey";
+const REFRESH_INTERVAL = 10000;
+
+const COLLARS = [
+  { id: "bddbb0f0-1440-11f1-840f-e9bf6f45218f", name: "Collar 1", color: "#D4540E", colorLight: "rgba(212,84,14,0.15)" },
+  { id: "b5fca8f0-0a4d-11f1-90fa-e1d5a16c5c86", name: "Collar 2", color: "#7C3AED", colorLight: "rgba(124,58,237,0.15)" },
+  { id: "598eb4f0-14ca-11f1-ad13-23db93f4d850", name: "Collar 3", color: "#059669", colorLight: "rgba(5,150,105,0.15)" },
+];
+
+let jwtToken = null, tokenExpiry = 0;
+let map;
+let activeCollarIdx = 0;
+let trailVisible = true;
+
+// Per-collar state
+const collarState = COLLARS.map(() => ({
+  coords: [],
+  trailLine: null,
+  markerGroup: null,
+}));
+
+// ══════════════════════════════════════════════════════════
+// ── Settings Dropdown ──
+// ══════════════════════════════════════════════════════════
+function toggleSettings() {
+  const menu = document.getElementById('settingsMenu');
+  menu.classList.toggle('open');
+}
+function closeSettings() {
+  document.getElementById('settingsMenu').classList.remove('open');
+}
+// Close on outside click
+document.addEventListener('click', (e) => {
+  const wrapper = document.getElementById('settingsWrapper');
+  if (wrapper && !wrapper.contains(e.target)) closeSettings();
+});
+
+// ══════════════════════════════════════════════════════════
+// ── Auth ──
+// ══════════════════════════════════════════════════════════
+async function getToken() {
+  if (jwtToken && Date.now() < tokenExpiry - 60000) return jwtToken;
+  const r = await fetch(`${TB_HOST}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: TB_USER, password: TB_PASS })
+  });
+  if (!r.ok) throw new Error("Auth failed: " + r.status);
+  const d = await r.json();
+  jwtToken = d.token;
+  tokenExpiry = Date.now() + 3600000;
+  return jwtToken;
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Fetch telemetry for a device ──
+// ══════════════════════════════════════════════════════════
+async function fetchTelemetryForDevice(deviceId) {
+  const t = await getToken();
+  const r = await fetch(
+    `${TB_HOST}/api/plugins/telemetry/DEVICE/${deviceId}/values/timeseries?keys=latitude,longitude&startTs=0&endTs=${Date.now()}&limit=10000&agg=NONE&orderBy=ASC`,
+    { headers: { "X-Authorization": "Bearer " + t } }
+  );
+  if (!r.ok) throw new Error("Telemetry fetch failed: " + r.status);
+  return r.json();
+}
+
+async function fetchSharedAttrsForDevice(deviceId) {
+  const t = await getToken();
+  const r = await fetch(
+    `${TB_HOST}/api/plugins/telemetry/DEVICE/${deviceId}/values/attributes/SHARED_SCOPE?keys=latitude,longitude`,
+    { headers: { "X-Authorization": "Bearer " + t } }
+  );
+  if (!r.ok) throw new Error("Attr fetch failed: " + r.status);
+  const arr = await r.json();
+  const obj = {};
+  arr.forEach(x => obj[x.key] = { value: x.value, ts: x.lastUpdateTs });
+  return obj;
+}
+
+// ── Parse telemetry ──
+function parseTelemetry(data) {
+  const lats = data.latitude || [];
+  const lngs = data.longitude || [];
+  const byTs = {};
+  lats.forEach(p => { byTs[p.ts] = byTs[p.ts] || {}; byTs[p.ts].lat = parseFloat(p.value); byTs[p.ts].ts = p.ts; });
+  lngs.forEach(p => { byTs[p.ts] = byTs[p.ts] || {}; byTs[p.ts].lng = parseFloat(p.value); byTs[p.ts].ts = p.ts; });
+  return Object.values(byTs)
+    .filter(c => c.lat != null && c.lng != null && !isNaN(c.lat) && !isNaN(c.lng))
+    .sort((a, b) => a.ts - b.ts);
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Haversine Distance ──
+// ══════════════════════════════════════════════════════════
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Earth radius in meters
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function calcTotalDistance(coords) {
+  if (coords.length < 2) return 0;
+  let total = 0;
+  for (let i = 1; i < coords.length; i++) {
+    total += haversineDistance(coords[i - 1].lat, coords[i - 1].lng, coords[i].lat, coords[i].lng);
+  }
+  return total;
+}
+
+function formatDistance(meters) {
+  if (meters < 1) return '0 m';
+  if (meters < 1000) return Math.round(meters) + ' m';
+  return (meters / 1000).toFixed(2) + ' km';
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Map Init ──
+// ══════════════════════════════════════════════════════════
+function initMap() {
+  map = L.map('map', {
+    zoomControl: true,
+    attributionControl: false
+  }).setView([12.93291, 77.634247], 13);
+
+  // Clean, light map tiles (CartoDB Positron — clean light style)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    subdomains: 'abcd'
+  }).addTo(map);
+
+  // Create per-collar trail lines + marker groups
+  COLLARS.forEach((collar, i) => {
+    collarState[i].trailLine = L.polyline([], {
+      color: collar.color,
+      weight: 3,
+      opacity: 0.7,
+      smoothFactor: 1.5,
+      lineCap: 'round',
+      lineJoin: 'round',
+      dashArray: null
+    }).addTo(map);
+    collarState[i].markerGroup = L.layerGroup().addTo(map);
+  });
+
+  buildLegend();
+}
+
+function buildLegend() {
+  const legend = document.getElementById('mapLegend');
+  legend.innerHTML = COLLARS.map((c) =>
+    `<div class="legend-item"><span class="legend-dot" style="background:${c.color}"></span>${c.name}</div>`
+  ).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Collar Selector Tabs ──
+// ══════════════════════════════════════════════════════════
+function buildCollarTabs() {
+  const container = document.getElementById('collarSelector');
+  let html = '';
+
+  COLLARS.forEach((collar, i) => {
+    const isActive = activeCollarIdx === i;
+    html += `<button class="collar-tab${isActive ? ' active' : ''}" data-index="${i}" onclick="selectCollar(${i})">
+      <span class="collar-dot" style="background:${collar.color}"></span>${collar.name}
+    </button>`;
+  });
+  html += `<button class="collar-tab${activeCollarIdx === 'all' ? ' active' : ''}" data-index="all" onclick="selectCollar('all')">
+    <span class="collar-dot" style="background:linear-gradient(135deg,var(--collar1),var(--collar2),var(--collar3))"></span>All
+  </button>`;
+
+  container.innerHTML = html;
+}
+
+function selectCollar(idx) {
+  activeCollarIdx = idx;
+  buildCollarTabs();
+  updateMapVisibility();
+  updateStatsForActive();
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Update Map Per-Collar ──
+// ══════════════════════════════════════════════════════════
+function renderCollarOnMap(collarIdx) {
+  const collar = COLLARS[collarIdx];
+  const state = collarState[collarIdx];
+  const coords = state.coords;
+  const group = state.markerGroup;
+  const trail = state.trailLine;
+
+  group.clearLayers();
+
+  if (!coords.length) {
+    trail.setLatLngs([]);
+    return;
+  }
+
+  const latLngs = coords.map(c => [c.lat, c.lng]);
+  trail.setLatLngs(latLngs);
+  trail.setStyle({ opacity: trailVisible ? 0.7 : 0, color: collar.color });
+
+  // History dots
+  coords.forEach((c, i) => {
+    if (i === coords.length - 1) return;
+    const dot = L.circleMarker([c.lat, c.lng], {
+      radius: 3.5,
+      fillColor: collar.color,
+      fillOpacity: 0.35,
+      color: collar.color,
+      weight: 1,
+      opacity: 0.25
+    });
+    dot.bindPopup(`<div>
+      <b>${collar.name} · Point ${i + 1}</b><br/>
+      ${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}<br/>
+      ${new Date(c.ts).toLocaleString()}
+    </div>`);
+    group.addLayer(dot);
+  });
+
+  // Latest position — pulse marker
+  const latest = coords[coords.length - 1];
+  const pulseIcon = L.divIcon({
+    className: '',
+    html: `<div class="pulse-marker c${collarIdx}"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7]
+  });
+  const latestMarker = L.marker([latest.lat, latest.lng], { icon: pulseIcon });
+  latestMarker.bindPopup(`<div>
+    <b>🐾 ${collar.name} — Latest</b><br/>
+    ${latest.lat.toFixed(6)}, ${latest.lng.toFixed(6)}<br/>
+    ${new Date(latest.ts).toLocaleString()}
+  </div>`);
+  group.addLayer(latestMarker);
+
+  // Start marker
+  if (coords.length > 1) {
+    const start = coords[0];
+    const startIcon = L.divIcon({
+      className: '',
+      html: `<div style="width:10px;height:10px;background:${collar.color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.2);opacity:0.7;"></div>`,
+      iconSize: [10, 10],
+      iconAnchor: [5, 5]
+    });
+    const sm = L.marker([start.lat, start.lng], { icon: startIcon });
+    sm.bindPopup(`<div>
+      <b>${collar.name} — Start</b><br/>
+      ${start.lat.toFixed(6)}, ${start.lng.toFixed(6)}<br/>
+      ${new Date(start.ts).toLocaleString()}
+    </div>`);
+    group.addLayer(sm);
+  }
+}
+
+function updateMapVisibility() {
+  COLLARS.forEach((_, i) => {
+    const show = activeCollarIdx === 'all' || activeCollarIdx === i;
+    const state = collarState[i];
+    if (show) {
+      if (!map.hasLayer(state.markerGroup)) map.addLayer(state.markerGroup);
+      if (!map.hasLayer(state.trailLine))  map.addLayer(state.trailLine);
+      state.trailLine.setStyle({ opacity: trailVisible ? 0.7 : 0 });
+    } else {
+      if (map.hasLayer(state.markerGroup)) map.removeLayer(state.markerGroup);
+      if (map.hasLayer(state.trailLine))  map.removeLayer(state.trailLine);
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Stats ──
+// ══════════════════════════════════════════════════════════
+function updateStatsForActive() {
+  let coords, collarName;
+  if (activeCollarIdx === 'all') {
+    coords = COLLARS.flatMap((_, i) => collarState[i].coords).sort((a, b) => a.ts - b.ts);
+    collarName = 'All Collars';
+  } else {
+    coords = collarState[activeCollarIdx].coords;
+    collarName = COLLARS[activeCollarIdx].name;
+  }
+
+  if (!coords.length) {
+    document.getElementById('statLocation').textContent = '—';
+    document.getElementById('statLocationSub').textContent = 'Waiting for GPS...';
+    document.getElementById('statPoints').textContent = '0';
+    document.getElementById('statTime').textContent = '—';
+    document.getElementById('statTimeSub').textContent = '—';
+    document.getElementById('statDistance').textContent = '—';
+    document.getElementById('statDistanceSub').textContent = 'No route data';
+    document.getElementById('statPointsSub').textContent = 'No data';
+    document.getElementById('overlayCoord').textContent = '—';
+    return;
+  }
+
+  const latest = coords[coords.length - 1];
+
+  // Current Location — cleaner format
+  document.getElementById('statLocation').textContent =
+    `${latest.lat.toFixed(4)}°, ${latest.lng.toFixed(4)}°`;
+  document.getElementById('statLocationSub').textContent = collarName;
+
+  // Data Points
+  document.getElementById('statPoints').textContent = coords.length;
+  document.getElementById('statPointsSub').textContent = 'Total tracked';
+
+  // Last Update — human readable
+  const ago = timeAgo(latest.ts);
+  document.getElementById('statTime').textContent = ago;
+  document.getElementById('statTimeSub').textContent = new Date(latest.ts).toLocaleTimeString();
+
+  // Distance
+  const dist = calcTotalDistance(coords);
+  document.getElementById('statDistance').textContent = formatDistance(dist);
+  document.getElementById('statDistanceSub').textContent = `${coords.length} points`;
+
+  // Map overlay
+  document.getElementById('overlayCoord').textContent =
+    `${collarName}: ${latest.lat.toFixed(6)}, ${latest.lng.toFixed(6)}`;
+  document.getElementById('mapOverlay').style.display = 'flex';
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Refresh All Collars ──
+// ══════════════════════════════════════════════════════════
+async function refreshAllCollars() {
+  try {
+    const results = await Promise.allSettled(
+      COLLARS.map(async (collar, i) => {
+        const telem = await fetchTelemetryForDevice(collar.id);
+        let coords = parseTelemetry(telem);
+
+        if (!coords.length) {
+          const attrs = await fetchSharedAttrsForDevice(collar.id);
+          if (attrs.latitude && attrs.longitude) {
+            coords = [{
+              lat: parseFloat(attrs.latitude.value),
+              lng: parseFloat(attrs.longitude.value),
+              ts: attrs.latitude.ts || Date.now()
+            }];
+          }
+        }
+
+        collarState[i].coords = coords;
+        renderCollarOnMap(i);
+      })
+    );
+
+    const failures = results.filter(r => r.status === 'rejected');
+    if (failures.length === COLLARS.length) {
+      throw new Error(failures[0].reason?.message || 'All collar fetches failed');
+    }
+    if (failures.length > 0) {
+      showToast(`${failures.length}/${COLLARS.length} collar(s) failed to update`, "warn");
+    }
+
+    updateMapVisibility();
+    updateStatsForActive();
+    setStatus('live', 'Connected');
+    document.getElementById('mapLoader').style.display = 'none';
+
+    const totalPts = collarState.reduce((s, c) => s + c.coords.length, 0);
+    document.getElementById('refreshLabel').textContent =
+      `Auto-refresh: 10s · ${totalPts} points · ${new Date().toLocaleTimeString()}`;
+
+  } catch (e) {
+    setStatus('error', 'Error');
+    showToast(e.message, "error");
+    document.getElementById('mapLoader').style.display = 'none';
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Controls ──
+// ══════════════════════════════════════════════════════════
+function fitBounds() {
+  let coords;
+  if (activeCollarIdx === 'all') {
+    coords = COLLARS.flatMap((_, i) => collarState[i].coords);
+  } else {
+    coords = collarState[activeCollarIdx].coords;
+  }
+  if (!coords.length) return;
+  const bounds = L.latLngBounds(coords.map(c => [c.lat, c.lng]));
+  map.fitBounds(bounds, { padding: [50, 50], maxZoom: 17, animate: true });
+}
+
+function goLatest() {
+  let coords;
+  if (activeCollarIdx === 'all') {
+    coords = COLLARS.flatMap((_, i) => collarState[i].coords);
+  } else {
+    coords = collarState[activeCollarIdx].coords;
+  }
+  if (!coords.length) return;
+  coords.sort((a, b) => a.ts - b.ts);
+  const latest = coords[coords.length - 1];
+  map.setView([latest.lat, latest.lng], 17, { animate: true });
+}
+
+function toggleTrail() {
+  trailVisible = !trailVisible;
+  COLLARS.forEach((_, i) => {
+    const show = activeCollarIdx === 'all' || activeCollarIdx === i;
+    collarState[i].trailLine.setStyle({ opacity: (trailVisible && show) ? 0.7 : 0 });
+  });
+  const btn = document.getElementById('btnTrail');
+  btn.classList.toggle('active', trailVisible);
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Flush ──
+// ══════════════════════════════════════════════════════════
+function confirmFlush() {
+  if (activeCollarIdx === 'all') {
+    showToast("Select a specific collar to flush", "warn");
+    return;
+  }
+  const collar = COLLARS[activeCollarIdx];
+  document.getElementById('flushCollarName').textContent = collar.name;
+  document.getElementById('flushModal').classList.add('show');
+}
+
+function closeFlushModal() {
+  document.getElementById('flushModal').classList.remove('show');
+}
+
+async function executeFlush() {
+  closeFlushModal();
+  if (activeCollarIdx === 'all') return;
+
+  const collar = COLLARS[activeCollarIdx];
+  const idx = activeCollarIdx;
+
+  try {
+    const t = await getToken();
+    const r = await fetch(
+      `${TB_HOST}/api/plugins/telemetry/DEVICE/${collar.id}/timeseries/delete?keys=latitude,longitude&deleteAllDataForKeys=true`,
+      { method: "DELETE", headers: { "X-Authorization": "Bearer " + t } }
+    );
+    if (!r.ok) throw new Error("Flush failed: " + r.status);
+
+    collarState[idx].coords = [];
+    renderCollarOnMap(idx);
+    updateStatsForActive();
+    showToast(`${collar.name} — all telemetry flushed`, "success");
+
+  } catch (e) {
+    showToast("Flush error: " + e.message, "error");
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Download Map Image ──
+// ══════════════════════════════════════════════════════════
+async function downloadMapImage() {
+  const label = activeCollarIdx === 'all' ? 'all-collars' : COLLARS[activeCollarIdx].name.replace(/\s/g, '-');
+  showToast("Capturing map...", "");
+
+  try {
+    const mapEl = document.querySelector('.map-wrapper');
+    const canvas = await html2canvas(mapEl, {
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#FFFFFF',
+      scale: 2,
+    });
+    const link = document.createElement('a');
+    link.download = `myperro-${label}-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast("Map image downloaded", "success");
+  } catch (e) {
+    showToast("Download failed: " + e.message, "error");
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Helpers ──
+// ══════════════════════════════════════════════════════════
+function setStatus(dotClass, label) {
+  document.getElementById('connDot').className = 'status-dot ' + dotClass;
+  document.getElementById('connLabel').textContent = label;
+}
+
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 5) return "Just now";
+  if (s < 60) return s + " sec ago";
+  if (s < 3600) {
+    const m = Math.floor(s / 60);
+    return m + " min ago";
+  }
+  if (s < 86400) {
+    const h = Math.floor(s / 3600);
+    return h + (h === 1 ? " hour ago" : " hours ago");
+  }
+  const d = Math.floor(s / 86400);
+  return d + (d === 1 ? " day ago" : " days ago");
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast " + (type || "");
+  t.classList.add("show");
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove("show"), 3800);
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Init ──
+// ══════════════════════════════════════════════════════════
+initMap();
+buildCollarTabs();
+refreshAllCollars();
+setInterval(refreshAllCollars, REFRESH_INTERVAL);
+</script>
+</body>
+</html>
