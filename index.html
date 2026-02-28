@@ -1034,9 +1034,6 @@ header {
 // ══════════════════════════════════════════════════════════
 // ── Config ──
 // ══════════════════════════════════════════════════════════
-const TB_HOST   = "https://thingsboard.cloud";
-const TB_USER   = "junglemungle64@gmail.com";
-const TB_PASS   = "liftkaradey";
 const REFRESH_INTERVAL = 10000;
 
 const COLLARS = [
@@ -1073,47 +1070,25 @@ document.addEventListener('click', (e) => {
   if (wrapper && !wrapper.contains(e.target)) closeSettings();
 });
 
-// ══════════════════════════════════════════════════════════
-// ── Auth ──
-// ══════════════════════════════════════════════════════════
-async function getToken() {
-  if (jwtToken && Date.now() < tokenExpiry - 60000) return jwtToken;
-  const r = await fetch(`${TB_HOST}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: TB_USER, password: TB_PASS })
-  });
-  if (!r.ok) throw new Error("Auth failed: " + r.status);
-  const d = await r.json();
-  jwtToken = d.token;
-  tokenExpiry = Date.now() + 3600000;
-  return jwtToken;
-}
-
-// ══════════════════════════════════════════════════════════
-// ── Fetch telemetry for a device ──
-// ══════════════════════════════════════════════════════════
+// Proxy-backed telemetry fetch (calls serverless function on the same origin)
 async function fetchTelemetryForDevice(deviceId) {
-  const t = await getToken();
-  const r = await fetch(
-    `${TB_HOST}/api/plugins/telemetry/DEVICE/${deviceId}/values/timeseries?keys=latitude,longitude&startTs=0&endTs=${Date.now()}&limit=10000&agg=NONE&orderBy=ASC`,
-    { headers: { "X-Authorization": "Bearer " + t } }
-  );
-  if (!r.ok) throw new Error("Telemetry fetch failed: " + r.status);
+  const r = await fetch('/api/tb', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'telemetry', deviceId })
+  });
+  if (!r.ok) throw new Error('Telemetry fetch failed: ' + r.status);
   return r.json();
 }
 
 async function fetchSharedAttrsForDevice(deviceId) {
-  const t = await getToken();
-  const r = await fetch(
-    `${TB_HOST}/api/plugins/telemetry/DEVICE/${deviceId}/values/attributes/SHARED_SCOPE?keys=latitude,longitude`,
-    { headers: { "X-Authorization": "Bearer " + t } }
-  );
-  if (!r.ok) throw new Error("Attr fetch failed: " + r.status);
-  const arr = await r.json();
-  const obj = {};
-  arr.forEach(x => obj[x.key] = { value: x.value, ts: x.lastUpdateTs });
-  return obj;
+  const r = await fetch('/api/tb', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'attrs', deviceId })
+  });
+  if (!r.ok) throw new Error('Attr fetch failed: ' + r.status);
+  return r.json();
 }
 
 // ── Parse telemetry ──
