@@ -42,8 +42,11 @@ export default async function handler(req, res) {
       const url = `${TB_HOST}/api/plugins/telemetry/DEVICE/${deviceId}/values/attributes/SHARED_SCOPE?keys=latitude,longitude`;
       const r = await fetch(url, { headers: { 'X-Authorization': 'Bearer ' + token } });
       if (!r.ok) return res.status(r.status).json({ error: 'Attr fetch failed', status: r.status });
-      const data = await r.json();
-      return res.status(200).json(data);
+      const arr = await r.json();
+      // Transform array into { key: { value, ts } } object the client expects
+      const obj = {};
+      arr.forEach(x => { obj[x.key] = { value: x.value, ts: x.lastUpdateTs }; });
+      return res.status(200).json(obj);
     }
 
     if (action === 'flush') {

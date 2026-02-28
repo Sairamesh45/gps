@@ -1042,7 +1042,6 @@ const COLLARS = [
   { id: "598eb4f0-14ca-11f1-ad13-23db93f4d850", name: "Collar 3", color: "#059669", colorLight: "rgba(5,150,105,0.15)" },
 ];
 
-let jwtToken = null, tokenExpiry = 0;
 let map;
 let activeCollarIdx = 0;
 let trailVisible = true;
@@ -1452,20 +1451,20 @@ async function executeFlush() {
   const idx = activeCollarIdx;
 
   try {
-    const t = await getToken();
-    const r = await fetch(
-      `${TB_HOST}/api/plugins/telemetry/DEVICE/${collar.id}/timeseries/delete?keys=latitude,longitude&deleteAllDataForKeys=true`,
-      { method: "DELETE", headers: { "X-Authorization": "Bearer " + t } }
-    );
-    if (!r.ok) throw new Error("Flush failed: " + r.status);
+    const r = await fetch('/api/tb', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'flush', deviceId: collar.id })
+    });
+    if (!r.ok) throw new Error('Flush failed: ' + r.status);
 
     collarState[idx].coords = [];
     renderCollarOnMap(idx);
     updateStatsForActive();
-    showToast(`${collar.name} — all telemetry flushed`, "success");
+    showToast(`${collar.name} — all telemetry flushed`, 'success');
 
   } catch (e) {
-    showToast("Flush error: " + e.message, "error");
+    showToast('Flush error: ' + e.message, 'error');
   }
 }
 
